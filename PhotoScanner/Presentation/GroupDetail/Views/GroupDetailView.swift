@@ -12,9 +12,9 @@ struct GroupDetailView: View {
     @StateObject private var viewModel: GroupDetailViewModel
     
     private let columns = [
-        GridItem(.flexible(), spacing: 2),
-        GridItem(.flexible(), spacing: 2),
-        GridItem(.flexible(), spacing: 2)
+        GridItem(.flexible(), spacing: 1),
+        GridItem(.flexible(), spacing: 1),
+        GridItem(.flexible(), spacing: 1)
     ]
     
     init(groupItem: GroupItem) {
@@ -48,7 +48,7 @@ struct GroupDetailView: View {
                     }
                     .frame(height: geometry.size.height * 0.6)
                 } else {
-                    LazyVGrid(columns: columns, spacing: 2) {
+                    LazyVGrid(columns: columns, spacing: 1) {
                         ForEach(Array(viewModel.assets.enumerated()), id: \.element.localIdentifier) { index, asset in
                             PhotoGridItemView(
                                 asset: asset,
@@ -94,34 +94,37 @@ struct PhotoGridItemView: View {
     @State private var isLoading = true
     
     var body: some View {
-        Button(action: onTap) {
-            Group {
-                if isLoading {
-                    Rectangle()
-                        .fill(Color(.systemGray5))
-                        .overlay {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .secondary))
-                        }
-                } else if let image = image {
-                    Image(uiImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } else {
-                    Rectangle()
-                        .fill(Color(.systemGray5))
-                        .overlay {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.orange)
-                                .font(.title2)
-                        }
+        GeometryReader { geometry in
+            Button(action: onTap) {
+                ZStack {
+                    if isLoading {
+                        Color(.systemGray5)
+                            .overlay {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .secondary))
+                            }
+                    } else if let image = image {
+                        Image(uiImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: geometry.size.width, height: geometry.size.height)
+                            .clipped()
+                    } else {
+                        Color(.systemGray5)
+                            .overlay {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.orange)
+                                    .font(.title2)
+                            }
+                    }
                 }
+                .frame(width: geometry.size.width, height: geometry.size.height)
+                .cornerRadius(6)
+                .contentShape(Rectangle())
             }
-            .frame(height: 120)
-            .clipped()
-            .cornerRadius(8)
+            .buttonStyle(PlainButtonStyle())
         }
-        .buttonStyle(PlainButtonStyle())
+        .aspectRatio(1.0, contentMode: .fit)
         .task {
             if image == nil {
                 await loadThumbnail()
