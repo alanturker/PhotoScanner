@@ -6,7 +6,7 @@
 //
 
 import Photos
-import Foundation
+import UIKit
 
 protocol ScanServiceProtocol {
     func startScanning() async
@@ -29,6 +29,8 @@ final class ScanService: ScanServiceProtocol {
     private let groupedAssetsFileName = "grouped_assets.json"
     private let batchSize = 10
     
+    private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+    
     init(photoService: PhotoServiceProtocol = PhotoService(),
          storageService: StorageServiceProtocol = StorageService()) {
         self.photoService = photoService
@@ -41,8 +43,11 @@ final class ScanService: ScanServiceProtocol {
         isScanning = true
         shouldStop = false
         
+        startBackgroundTask()
+        
         currentTask = Task {
             await performScan()
+            endBackgroundTask()
         }
     }
     
@@ -50,6 +55,8 @@ final class ScanService: ScanServiceProtocol {
         shouldStop = true
         currentTask?.cancel()
         isScanning = false
+        
+        endBackgroundTask()
     }
     
     func clearData() async throws {
@@ -91,6 +98,13 @@ final class ScanService: ScanServiceProtocol {
                     break
                 }
                 
+                if await UIApplication.shared.applicationState == .background {
+                    let timeLeft = await UIApplication.shared.backgroundTimeRemaining
+                    if timeLeft < 10.0 {
+                        break
+                    }
+                }
+                
                 let asset = allAssets.object(at: index)
                 
                 if processedAssetIds.contains(asset.localIdentifier) {
@@ -118,5 +132,20 @@ final class ScanService: ScanServiceProtocol {
         }
         
         isScanning = false
+    }
+    
+    private func startBackgroundTask() {
+        endBackgroundTask()
+        
+        backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "PhotoScan") {
+            self.endBackgroundTask()
+        }
+    }
+    
+    private func endBackgroundTask() {
+        if backgroundTaskID != .invalid {
+            UIApplication.shared.endBackgroundTask(backgroundTaskID)
+            backgroundTaskID = .invalid
+        }
     }
 }
